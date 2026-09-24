@@ -1,0 +1,45 @@
+        <!-- Slide 23: Getting Started -->
+        <div class="slide">
+            <div class="icon">⚡</div>
+            <h2>Get Started in 60 Seconds</h2>
+            <div class="code-snippet">
+                # Install and run<br>
+                uv pip install massgen && uv run massgen<br><br>
+
+                # First run: Setup wizard guides you through:<br>
+                #   → API key configuration<br>
+                #   → Creates your default config<br>
+                #   → Downloads skills &amp; containers as needed<br><br>
+
+                # Future runs: uses your default config, or specify another<br>
+                uv run massgen "Your question"<br>
+                uv run massgen --config @examples/basic/multi/three_agents_default "..."  # No Docker<br>
+                uv run massgen --config @examples/tools/filesystem/code_based "..."      # With Docker<br><br>
+
+                # Web UI: Real-time visualization of agent coordination<br>
+                uv run massgen --web
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 25px; margin-top: 30px;">
+                <div style="text-align: center; padding: 20px; background: rgba(46, 204, 113, 0.1); border-radius: 15px;">
+                    <h3 style="color: #27ae60; margin-bottom: 15px;">✅ Supported Models & Providers</h3>
+                    <div style="font-size: 1em; line-height: 1.5;">
+                        <div style="font-weight: bold; margin-bottom: 8px;">🏢 Major Providers:</div>
+                        <div>Anthropic Claude • Google Gemini • OpenAI GPT/Codex • xAI Grok • ZAI GLM</div>
+                        <div style="font-weight: bold; margin: 12px 0 8px 0;">🏠 Local & Extended:</div>
+                        <div>Cerebras • Fireworks • Groq • LM Studio • OpenRouter • SGLang • Together • vLLM...</div>
+                    </div>
+                </div>
+                <div style="text-align: center; padding: 20px; background: rgba(155, 89, 182, 0.1); border-radius: 15px;">
+                    <h3 style="color: #8e44ad; margin-bottom: 15px;">🤖 Agents & Frameworks</h3>
+                    <div style="font-size: 1.1em;">AG2 • AgentScope • Claude Code CLI • LangGraph • NLIP • Smolagent</div>
+                </div>
+                <div style="text-align: center; padding: 20px; background: rgba(52, 152, 219, 0.1); border-radius: 15px;">
+                    <h3 style="color: #3498db; margin-bottom: 15px;">🛠️ Advanced Tools</h3>
+                    <div style="font-size: 1.1em;">Browser Automation • Code Execution • Computer Use • Docker • File Operations • GUI Automation • Hooks • MCP • Memory • Multimodal • Personas • Skills • Subagents • Web Search</div>
+                </div>
+            </div>
+            <div style="text-align: center; padding: 20px; margin-top: 25px; background: rgba(241, 196, 15, 0.1); border-radius: 15px;">
+                <h3 style="color: #f39c12; margin-bottom: 15px;">🎨 UI/UX Interfaces</h3>
+                <div style="font-size: 1.1em;">API Server • Web UI • Terminal UI • CLI Streaming Display • Context Recovery • Interactive Multi-Turn • Log Analysis • Quickstart Wizard • Session Export • Session Resumption • Observability</div>
+            </div>
+        </div>

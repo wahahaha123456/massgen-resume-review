@@ -1,0 +1,62 @@
+## 简历改进建议（按优先级，共 5 条）
+
+1. 项目2改写为"主导单体拆分为 N 个微服务，服务数量/接口 QPS 峰值/P95 500ms→120ms"，把"主导"落到拆分粒度与治理方案（注册发现、限流）。
+2. 项目3补容量与可靠性：日均 1 亿条 → 改写为"峰值 TPS X、端到端延迟 Yms，Exactly-Once + 背压 + 故障恢复"，一句一个数字。
+3. 针对 JD 缺口逐项补关键词并各配一句结果：分布式事务、幂等、分库分表、分布式锁、链路追踪，避免堆砌。
+4. 技能栏按 JD 重排并标注年限：Python(N年) → 微服务(FastAPI) → MySQL/Redis → K8s/Celery/Kafka，删掉无项目支撑项。
+5. 顶部加 3 行摘要：定位句 + 3 年经验 + 最强数字（如"日处理 1 亿条"），让 HR 10 秒内看到匹配点。
+
+（全文 297 字，符合 ≤300 字约束）
+
+产出文件：
+- `deliverable/resume_advice.txt` — 最终建议文本（沿用 agent2 的交付位置）
+- `tasks/changedoc.md` — 决策日志
+- `.massgen_scratch/verification/check_len.py` — 字数断言（297 ≤ 300，5 条，PASS）
+
+说明：本任务为纯文本教练建议（无动效/交互），验证方式为读取实际文本 + 字符与条数断言。
+
+# Change Document
+
+**Sources reviewed:** agent3.1（技术评分视角）、agent2.1（可执行建议）
+
+## Summary
+在 agent2.1 的 5 条建议基础上，将每条升级为"补缺口 + 配一个可量化结果"，强化分布式一致性与容量指标，保持 ≤300 字。
+
+## Decisions
+
+### DEC-001: 硬性 300 字约束用极简祈使句实现
+**Origin:** agent2.1 (kept)
+**Choice:** 5 条优先级排序的单词句。
+**Why:** 系统提示将 300 字上限设为 critical，冗长即失败。
+**Synthesis Note:** agent2.1 版本已满足约束，保留并复用其交付结构。
+**Implementation:**
+- `deliverable/resume_advice.txt` — 最终建议文本
+- `.massgen_scratch/verification/check_len.py` — 断言字符数与条数
+
+### DEC-002: 每条建议附带"可量化结果"而非仅补关键词
+**Origin:** agent2.1 → [SELF] (modified)
+**Choice:** 在第 3、4 条基础上，为分布式术语强制配一句结果指标（TPS、延迟、恢复时间）。
+**Why:** JD 强调高并发/分布式，仅堆关键词无法证明深度（agent3.1 亦指出此短板）。
+**Synthesis Note:** 合并 agent3.1 的"深度存疑"诊断与 agent2.1 的"补关键词"动作，形成"补词+补数"复合建议。
+**Implementation:**
+- n/a（纯文本建议）
+
+### DEC-003: 顶部摘要作为最高优先级"10 秒匹配"信号
+**Origin:** agent2.1 (kept) → [SELF] (modified)
+**Choice:** 摘要必须含定位句 + 经验年限 + 最强数字。
+**Why:** 高级岗筛选依赖快速匹配信号。
+**Implementation:**
+- n/a（纯文本建议）
+
+## Deliberation Trail
+### [SELF]（综合 agent2.1 + agent3.1）
+- DEC-001: 保留 agent2.1 约束写法。
+- DEC-002: 合并 agent3.1 的深度诊断 → 每条建议加量化结果。
+- DEC-003: 保留并要求摘要含最强数字。
+
+## Key Output Changes from Prior
+- 每条建议从"补什么"升级为"补什么 + 配什么数字"。
+- 新增容量/一致性指标（TPS、Exactly-Once、恢复时间）要求。
+
+## Open Gaps
+- 未提供改写示例全文：受 300 字上限约束。

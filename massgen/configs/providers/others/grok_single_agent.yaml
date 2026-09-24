@@ -1,0 +1,15 @@
+# Usage: uv run python -m massgen.cli --config grok_single_agent.yaml "List today's news in Seattle"
+agent:
+  id: "grok_agent"
+  backend:
+    type: "grok"
+    model: "grok-4"
+    enable_web_search: true
+    # enable_x_search: true
+    # enable_code_execution: true
+  system_message: "You are a helpful assistant"
+
+# Display configuration
+ui:
+  display_type: "textual_terminal"
+  logging_enabled: true

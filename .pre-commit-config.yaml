@@ -1,0 +1,162 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-ast
+      - id: sort-simple-yaml
+      - id: check-yaml
+        exclude: |
+          (?x)^(
+              meta.yaml
+          )$
+      - id: check-xml
+      - id: check-toml
+      - id: check-docstring-first
+      - id: check-json
+      - id: detect-private-key
+      - id: trailing-whitespace
+        exclude: ^massgen/tests/frontend/__snapshots__/.*\.svg$
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.19.1
+    hooks:
+      - id: pyupgrade
+        args: [--py311-plus]
+  - repo: https://github.com/asottile/add-trailing-comma
+    rev: v4.0.0
+    hooks:
+      - id: add-trailing-comma
+  - repo: https://github.com/pycqa/isort
+    rev: 8.0.0
+    hooks:
+      - id: isort
+        args: [--profile=black]
+  - repo: https://github.com/pycqa/autoflake
+    rev: v2.3.2
+    hooks:
+      - id: autoflake
+        args: [--in-place, --remove-all-unused-imports, --remove-unused-variables]
+  - repo: https://github.com/psf/black
+    rev: 26.1.0
+    hooks:
+    - id: black
+      args: [--line-length=200]
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.3.0
+    hooks:
+      - id: flake8
+        args: [--max-line-length=200, "--extend-ignore=E203,F824"]
+        exclude: ^docs
+  # - repo: https://github.com/pylint-dev/pylint
+  #   rev: v3.0.2
+  #   hooks:
+  #     - id: pylint
+  #       files: ^massgen/backend/
+  #       exclude: |
+  #         (?x)(
+  #             ^docs
+  #             | \.md$
+  #             | \.html$
+  #             | ^examples
+  #         )
+  #       args: [
+  #         --max-line-length=200,
+  #         --disable=W0511,
+  #         --disable=W0718,
+  #         --disable=W0122,
+  #         --disable=C0103,
+  #         --disable=C0302,
+  #         --disable=R0913,
+  #         --disable=E0401,
+  #         --disable=E1101,
+  #         --disable=C0415,
+  #         --disable=W0603,
+  #         --disable=W0613,
+  #         --disable=R1705,
+  #         --disable=R1723,
+  #         --disable=R0914,
+  #         --disable=E0601,
+  #         --disable=W0602,
+  #         --disable=W0604,
+  #         --disable=R0801,
+  #         --disable=R0902,
+  #         --disable=R0903,
+  #         --disable=R0912,
+  #         --disable=C0123,
+  #         --disable=W0231,
+  #         --disable=W1113,
+  #         --disable=W0221,
+  #         --disable=R0401,
+  #         --disable=W0632,
+  #         --disable=W0123,
+  #         --disable=C3001
+  #       ]
+
+  # Incremental mypy "ratchet": type-check only a curated island of clean modules
+  # (full-repo mypy is not yet feasible — ~2300 errors). Expand ISLAND in
+  # scripts/mypy_island.sh as modules get typed. A non-blocking full-repo mypy
+  # job runs in CI for visibility.
+  - repo: local
+    hooks:
+      - id: mypy-island
+        name: mypy (type-checked island)
+        entry: bash scripts/mypy_island.sh
+        language: system
+        pass_filenames: false
+        files: ^(massgen/agent_config\.py|massgen/backend/_excluded_params\.py|massgen/cli/(_constants|env|mode_flags|planning)\.py|scripts/mypy_island\.sh)$
+  - repo: https://github.com/regebro/pyroma
+    rev: "5.0.1"
+    hooks:
+      - id: pyroma
+        args: [.]
+  - repo: local
+    hooks:
+      - id: run-non-api-tests-on-push
+        name: Run non-API test lane before push
+        entry: sh -c 'uv run pytest massgen/tests --run-integration -m "not live_api and not docker and not expensive and not snapshot" -q --tb=no'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+      - id: sync-agent-instructions
+        name: Keep CLAUDE.md and AGENTS.md synchronized
+        entry: python scripts/precommit_sync_agent_instructions.py
+        language: system
+        files: ^(CLAUDE|AGENTS)\.md$
+        pass_filenames: false
+      # Need to fix locally
+      # - id: validate-configs
+      #   name: Validate MassGen configuration files
+      #   entry: python scripts/precommit_validate_configs.py
+      #   language: system
+      #   files: ^massgen/configs/.*\.(yaml|yml)$
+      #   exclude: ^massgen/configs/rate_limits/
+      #   pass_filenames: true
+      - id: sync-readme-pypi
+        name: Auto-sync README_PYPI.md when README.md changes
+        entry: python scripts/precommit_sync_readme.py
+        language: system
+        files: ^README\.md$
+        pass_filenames: false
+      - id: check-package-name
+        name: Ensure package name is "massgen" in pyproject.toml
+        entry: python scripts/precommit_check_package_name.py
+        language: system
+        files: ^pyproject\.toml$
+        pass_filenames: false
+  # - repo: local
+  #   hooks:
+  #     - id: check-massgen-python-file-length
+  #       name: Check massgen Python file length (max 700 lines)
+  #       entry: >
+  #         sh -c 'for file in "$@"; do
+  #           if echo "$file" | grep -q "^massgen/"; then
+  #             lines=$(wc -l < "$file");
+  #             if [ "$lines" -gt 700 ]; then
+  #               echo "Error: $file has $lines lines (max 700 allowed for massgen files)";
+  #               exit 1;
+  #             fi;
+  #           fi;
+  #         done' --
+  #       language: system
+  #       files: ^massgen/.*\.py$
+  #       pass_filenames: true

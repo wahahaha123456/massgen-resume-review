@@ -1,0 +1,70 @@
+# uv run massgen --config @examples/features/test_subagent_orchestrator_code_mode.yaml "Use subagents to research Bob Dylan"
+agents:
+- id: agent_a
+  backend:
+    type: claude_code
+    model: claude-sonnet-4-6
+    cwd: workspace1
+    enable_code_based_tools: true
+    exclude_file_operation_mcps: true
+    enable_mcp_command_line: true
+    command_line_execution_mode: docker
+    command_line_docker_image: ghcr.io/massgen/mcp-runtime-sudo:latest
+    command_line_docker_network_mode: bridge
+    command_line_docker_enable_sudo: true
+    command_line_docker_credentials:
+      env_file: .env
+      env_vars_from_file:
+      - OPENAI_API_KEY
+      - ANTHROPIC_API_KEY
+      - GOOGLE_API_KEY
+      - GEMINI_API_KEY
+    shared_tools_directory: shared_tools
+    auto_discover_custom_tools: true
+    exclude_custom_tools:
+    - _computer_use
+    - _claude_computer_use
+    - _gemini_computer_use
+    - _browser_automation
+    # enable_web_search: true
+orchestrator:
+  snapshot_storage: snapshots
+  agent_temporary_workspace: temp_workspaces
+  voting_sensitivity: "balanced"
+  max_new_answers_per_agent: 3
+  enable_multimodal_tools: true
+  image_generation_backend: openai
+  video_generation_backend: openai
+  audio_generation_backend: openai
+  coordination:
+    write_mode: auto  # Git worktree isolation with in-worktree scratch space
+    max_orchestration_restarts: 0
+    use_skills: true
+    skills_directory: .agent/skills
+    enable_agent_task_planning: true
+    task_planning_filesystem_mode: true
+    enable_memory_filesystem_mode: true
+    enable_subagents: true
+    subagent_default_timeout: 300
+    subagent_max_concurrent: 3
+    subagent_orchestrator:
+      enabled: true
+      # enable_web_search: true
+      # agents here are the shared common subagent agents for every parent agent.
+      # Parent agents can add top-level subagent_agents, and inherit_spawning_agent_backend
+      # can synthesize one from the spawning parent's backend when local config is absent.
+      agents:
+      - backend:
+          type: openrouter
+          model: z-ai/glm-5
+  context_paths: []
+ui:
+  type: rich_terminal
+  logging_enabled: true
+
+# Timeout settings to prevent agents from getting stuck
+timeout_settings:
+  orchestrator_timeout_seconds: 2700        # 45 min overall session limit
+  initial_round_timeout_seconds: 900        # 15 min for first answer
+  subsequent_round_timeout_seconds: 900     # 15 min for voting rounds
+  round_timeout_grace_seconds: 120          # 2 min grace before hard block

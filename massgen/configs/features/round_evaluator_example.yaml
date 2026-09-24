@@ -1,0 +1,230 @@
+### One agent builds, multi-agent evaluation team critiques each round
+# uv run massgen --config @examples/features/round_evaluator_example.yaml "Create an svg of an AI agent coding."
+#
+# This example showcases all round evaluator and evaluation options.
+# Uncomment optional sections to enable them.
+
+agents:
+  - id: agent_a
+    backend:
+      type: claude_code
+      model: claude-sonnet-4-6
+      cwd: workspace
+      enable_code_based_tools: true
+      exclude_file_operation_mcps: true
+      enable_mcp_command_line: true
+      command_line_execution_mode: docker
+      command_line_docker_network_mode: bridge
+      command_line_docker_enable_sudo: true
+      command_line_docker_credentials:
+        env_file: .env
+        env_vars_from_file:
+          - OPENAI_API_KEY
+          - ANTHROPIC_API_KEY
+          - GOOGLE_API_KEY
+          - GEMINI_API_KEY
+          - OPENROUTER_API_KEY
+          - ELEVENLABS_API_KEY
+          - XAI_API_KEY
+        mount:
+          - claude_config
+          - codex_config
+      shared_tools_directory: shared_tools
+      auto_discover_custom_tools: true
+      exclude_custom_tools:
+        - _computer_use
+        - _claude_computer_use
+        - _gemini_computer_use
+        - _browser_automation
+
+orchestrator:
+  snapshot_storage: snapshots
+  agent_temporary_workspace: temp_workspaces
+  max_new_answers_per_agent: 3
+  skip_final_presentation: true
+  enable_multimodal_tools: true
+  image_generation_backend: openai
+  video_generation_backend: openai
+  voting_sensitivity: checklist_gated
+  voting_threshold: 2
+  coordination:
+    ### ── Evaluation Criteria ──────────────────────────────────────────
+    # How checklist criteria are determined. Three mutually exclusive methods
+    # (inline > preset > generator). Pick one.
+
+    evaluation_criteria_generator:
+      enabled: true
+      # min_criteria: 4          # Min criteria to generate (default: 4)
+      # max_criteria: 7          # Max criteria to generate (default: 7)
+      # persist_across_turns: false  # Reuse generated criteria across interactive turns
+
+    # --- OR use a domain-specific preset instead of generating: ---
+    # checklist_criteria_preset: analysis
+    #   Valid values: persona, decomposition, evaluation, prompt,
+    #                 analysis, planning, spec, round_evaluator
+
+    # --- OR specify criteria inline (highest precedence): ---
+    # checklist_criteria_inline:
+    #   - text: "Output must compile/render without errors"
+    #     category: must
+    #   - text: "Code includes meaningful comments"
+    #     category: should
+    #   - text: "Solution explores an unconventional approach"
+    #     category: could
+
+    pre_collab_voting_threshold: 3
+    max_orchestration_restarts: 0
+    use_skills: true
+    skills_directory: .agent/skills
+    enable_agent_task_planning: true
+    task_planning_filesystem_mode: true
+    enable_memory_filesystem_mode: true
+    learning_capture_mode: verification_and_final_only
+    enable_changedoc: true
+    write_mode: auto
+    enable_subagents: true
+    subagent_default_timeout: 2000
+    subagent_max_concurrent: 3
+    ### ── Round Evaluator ──────────────────────────────────────────────
+    round_evaluator_before_checklist: true
+    orchestrator_managed_round_evaluator: true
+    round_evaluator_transformation_pressure: aggressive  # gentle | balanced | aggressive
+    # enable_evaluator_personas: true  # Expose set_evaluator_personas tool for agent-driven evaluator diversity
+    # round_evaluator_refine: false    # Let evaluator agents iterate across multiple rounds
+    # round_evaluator_skip_synthesis: false  # Pass raw critiques instead of synthesizing
+    #                                        # (incompatible with orchestrator_managed)
+
+    ### ── Execution Trace Analyzer (runs in parallel with round_evaluator) ──
+    enable_execution_trace_analyzer: true
+
+    ### ── Iteration-Triggered Subagents ────────────────────────────────
+    # enable_quality_rethink_on_iteration: false  # Auto-spawn quality rethinking on round 2+
+    # enable_novelty_on_iteration: false           # Auto-spawn novelty evaluation on round 2+
+
+    ### ── Improvement Quality Gates ────────────────────────────────────
+    # improvements:
+    #   min_transformative: 1      # Min transformative improvements required
+    #   min_structural: 1          # Min structural improvements required
+    #   min_non_incremental: 2     # Min non-incremental improvements required
+
+    subagent_types: [round_evaluator, execution_trace_analyzer, regression_guard]
+    subagent_orchestrator:
+      enabled: true
+      max_new_answers: 1
+      final_answer_strategy: synthesize
+      # Only round_evaluator uses the shared 3-agent child team by default.
+      # builder and other subagent types stay on the spawning parent's backend
+      # unless you opt them into the shared pool here.
+      shared_child_team_types: [round_evaluator]
+      agents:
+        - id: agent_x
+          backend:
+            type: codex
+            model: gpt-5.4
+            reasoning:
+              effort: medium
+            cwd: workspace
+            enable_code_based_tools: true
+            exclude_file_operation_mcps: true
+            enable_mcp_command_line: true
+            command_line_execution_mode: docker
+            command_line_docker_image: massgen/mcp-runtime-sudo:latest
+            command_line_docker_network_mode: bridge
+            command_line_docker_enable_sudo: true
+            command_line_docker_credentials:
+              env_file: .env
+              env_vars_from_file:
+                - OPENAI_API_KEY
+                - ANTHROPIC_API_KEY
+                - GOOGLE_API_KEY
+                - GEMINI_API_KEY
+                - OPENROUTER_API_KEY
+                - ELEVENLABS_API_KEY
+                - XAI_API_KEY
+              mount:
+                - claude_config
+                - codex_config
+            shared_tools_directory: shared_tools
+            auto_discover_custom_tools: true
+            exclude_custom_tools:
+              - _computer_use
+              - _claude_computer_use
+              - _gemini_computer_use
+              - _browser_automation
+        - id: agent_y
+          backend:
+            type: claude_code
+            model: claude-sonnet-4-6
+            reasoning:
+              type: disabled
+            cwd: workspace
+            enable_code_based_tools: true
+            exclude_file_operation_mcps: true
+            enable_mcp_command_line: true
+            command_line_execution_mode: docker
+            command_line_docker_image: massgen/mcp-runtime-sudo:latest
+            command_line_docker_network_mode: bridge
+            command_line_docker_enable_sudo: true
+            command_line_docker_credentials:
+              env_file: .env
+              env_vars_from_file:
+                - OPENAI_API_KEY
+                - ANTHROPIC_API_KEY
+                - GOOGLE_API_KEY
+                - GEMINI_API_KEY
+                - OPENROUTER_API_KEY
+                - ELEVENLABS_API_KEY
+                - XAI_API_KEY
+              mount:
+                - claude_config
+                - codex_config
+            shared_tools_directory: shared_tools
+            auto_discover_custom_tools: true
+            exclude_custom_tools:
+              - _computer_use
+              - _claude_computer_use
+              - _gemini_computer_use
+              - _browser_automation
+        - id: agent_z
+          backend:
+            type: gemini
+            model: gemini-3.1-pro-preview
+            cwd: workspace
+            enable_code_based_tools: true
+            exclude_file_operation_mcps: true
+            enable_mcp_command_line: true
+            command_line_execution_mode: docker
+            command_line_docker_image: massgen/mcp-runtime-sudo:latest
+            command_line_docker_network_mode: bridge
+            command_line_docker_enable_sudo: true
+            command_line_docker_credentials:
+              env_file: .env
+              env_vars_from_file:
+                - OPENAI_API_KEY
+                - ANTHROPIC_API_KEY
+                - GOOGLE_API_KEY
+                - GEMINI_API_KEY
+                - OPENROUTER_API_KEY
+                - ELEVENLABS_API_KEY
+                - XAI_API_KEY
+              mount:
+                - claude_config
+                - codex_config
+            shared_tools_directory: shared_tools
+            auto_discover_custom_tools: true
+            exclude_custom_tools:
+              - _computer_use
+              - _claude_computer_use
+              - _gemini_computer_use
+              - _browser_automation
+  context_paths: []
+
+timeout_settings:
+  orchestrator_timeout_seconds: 6000
+  initial_round_timeout_seconds: 1800
+  subsequent_round_timeout_seconds: 1800
+  round_timeout_grace_seconds: 450
+
+ui:
+  display_type: textual_terminal
+  logging_enabled: true

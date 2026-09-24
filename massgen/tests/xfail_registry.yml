@@ -1,0 +1,26 @@
+# Mapping: pytest nodeid -> xfail metadata
+#
+# Required fields:
+# - reason: short explanation (no secrets)
+#
+# Recommended fields:
+# - link: issue/PR URL or internal tracker reference
+# - expires: YYYY-MM-DD (forces revisit; can be enforced with --xfail-expired-fail or XFAIL_EXPIRED_FAIL=1)
+# - strict: true|false (pytest strict xfail; default true)
+#
+# Example:
+# massgen/tests/test_some_feature.py::TestClass::test_case:
+#   reason: "Flaky on macOS due to timing"
+#   link: "https://github.com/ORG/REPO/issues/123"
+#   expires: "2026-01-31"
+#   strict: true
+
+# --- Seeded xfails (initial triage baseline) ---
+# These are intentionally short-lived to keep the suite actionable while we delegate cluster fixes.
+
+# REMOVED: test_vhs_installed now uses @requires_vhs skipif decorator
+# REMOVED: test_run_with_single_model and test_run_with_models_list already use @pytest.mark.expensive
+
+# REMOVED: test_image_within_limits and test_image_dimension_limit now pass (fixed in v0.1.29)
+
+# REMOVED: test_persistent_memory tests now pass (Qdrant issues resolved)

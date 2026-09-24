@@ -1,0 +1,55 @@
+agents:
+  - id: "ds_chat"
+    backend:
+      type: "chatcompletion"
+      model: "deepseek-chat"
+      base_url: "https://api.deepseek.com/v1"
+      api_key: "${DEEPSEEK_API_KEY}"
+      cwd: "workspace"
+    system_message: |
+      You are a pragmatic engineer focused on clarity and correctness.
+      Answer concisely, ground every claim in concrete facts, and prefer
+      simple, verifiable explanations over elaborate theory.
+
+  - id: "ds_reasoner"
+    backend:
+      type: "chatcompletion"
+      model: "deepseek-reasoner"
+      base_url: "https://api.deepseek.com/v1"
+      api_key: "${DEEPSEEK_API_KEY}"
+      cwd: "workspace"
+    system_message: |
+      You are a rigorous analytical thinker.
+      Break problems down step by step, examine edge cases and trade-offs,
+      and make sure definitions are precise and internally consistent
+      before presenting a final answer.
+
+  - id: "ds_chat_2"
+    backend:
+      type: "chatcompletion"
+      model: "deepseek-chat"
+      base_url: "https://api.deepseek.com/v1"
+      api_key: "${DEEPSEEK_API_KEY}"
+      cwd: "workspace"
+    system_message: |
+      You are a teacher who excels at explaining technical concepts.
+      Always include a concrete real-world example or analogy so the
+      answer is immediately understandable, and highlight common
+      misconceptions the reader should avoid.
+
+ui:
+  display_type: "textual_terminal"
+  logging_enabled: true
+
+orchestrator:
+  snapshot_storage: snapshots
+  agent_temporary_workspace: temp_workspaces
+  max_new_answers_per_agent: 3
+  coordination:
+    max_orchestration_restarts: 2
+
+timeout_settings:
+  orchestrator_timeout_seconds: 1800
+  initial_round_timeout_seconds: 600
+  subsequent_round_timeout_seconds: 300
+  round_timeout_grace_seconds: 120

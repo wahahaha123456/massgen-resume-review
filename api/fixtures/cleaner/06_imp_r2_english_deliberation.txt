@@ -1,0 +1,11 @@
+评审（≤300字，按优先级，每条一句话）:
+
+1. 把"技能Python/Django"改成"技能：Python | Django/DRF | MySQL/PostgreSQL | Redis | Git/Docker"——按目标JD关键词分行、可被HR筛选命中。
+2. 新增"项目经历"模块，每条套用"做什么+技术栈+量化结果"，如"用Django开发订单接口，QPS提升30%"，没有实习就写课程设计或自研项目。
+3. 每条项目末尾附GitHub或线上demo链接，让后端能力可验证，替代口头"熟悉Django"。
+4. 补教育栏：学校、学历、2024届、计算机专业，并列出数据结构/数据库/操作系统等相关课程与绩点。
+5. 把"2024年毕业"改为一句求职意向（"求职Python后端开发，熟悉Django RESTful接口开发"），并全篇压到一页、删除与后端无关信息。
+
+下一步：先补1个项目+1条链接（建议2→3），再完善技能与教育栏。
+
+依据：extended agent2.1's improvement-plan framing (actions over ratings, no fabricated data) by converting every tip into a copy-paste "replace X with Y" edit, and added missing one-page/JD-keyword constraints.

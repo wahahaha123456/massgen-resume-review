@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多 Agent 简历评审系统</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --bg: #ffffff;
+    --card-bg: #ffffff;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --text: #111827;
+    --text-secondary: #374151;
+    --muted: #6b7280;
+    --tech-color: #2563eb;
+    --exp-color: #059669;
+    --imp-color: #d97706;
+    --chip-bg: #ecfdf5;
+    --chip-border: #a7f3d0;
+    --chip-text: #065f46;
+    --note-bg: #fffbeb;
+    --note-border: #fde68a;
+    --note-text: #92400e;
+    --error-bg: #fef2f2;
+    --error-border: #fecaca;
+    --error-text: #b91c1c;
+    --radius: 8px;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14.5px;
+    line-height: 1.7;
+    padding: 32px 16px;
+  }
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 24px;
+  }
+
+  /* ---------- 卡片 ---------- */
+  .card {
+    background: var(--card-bg);
+    border: 1px solid #eee;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+
+  /* ---------- 输入区 ---------- */
+  .field-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+  .resume-row {
+    display: grid;
+    grid-template-columns: 1fr 200px;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .jd-row { margin-bottom: 24px; }
+  textarea {
+    width: 100%;
+    height: 180px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+    resize: vertical;
+    background: var(--card-bg);
+    color: var(--text);
+  }
+  textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  }
+  textarea::placeholder { color: #9ca3af; }
+
+  .upload-col {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .upload-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    color: var(--text-secondary);
+    background: var(--card-bg);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius);
+    cursor: pointer;
+  }
+  .upload-btn:hover:not(:disabled) {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+  .upload-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .upload-btn svg { flex-shrink: 0; }
+  .upload-hint {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .file-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--chip-bg);
+    border: 1px solid var(--chip-border);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    font-size: 12.5px;
+  }
+  .file-chip-name {
+    font-weight: 500;
+    color: var(--chip-text);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .file-chip-remove {
+    border: none;
+    background: transparent;
+    color: var(--chip-text);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .file-chip-remove:hover { color: #047857; }
+
+  .btn-row { text-align: center; }
+  #submit-btn {
+    padding: 10px 40px;
+    font-size: 14.5px;
+    font-weight: 600;
+    font-family: inherit;
+    color: #fff;
+    background: var(--primary);
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+  }
+  #submit-btn:hover:not(:disabled) { background: var(--primary-hover); }
+  #submit-btn:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+  }
+
+  /* ---------- 加载状态 ---------- */
+  #loading {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 16px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13.5px;
+    color: var(--text-secondary);
+  }
+  #loading.active { display: flex; }
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #error {
+    display: none;
+    margin-top: 16px;
+    background: var(--error-bg);
+    border: 1px solid var(--error-border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    color: var(--error-text);
+    font-size: 13.5px;
+  }
+  #error.active { display: block; }
+
+  /* ---------- 结果区 ---------- */
+  .result-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .winner-tag {
+    font-size: 15px;
+    color: var(--text-secondary);
+  }
+  .winner-name {
+    color: var(--text);
+    font-weight: 700;
+    margin-left: 6px;
+  }
+  .meta-row {
+    font-size: 12.5px;
+    color: var(--muted);
+    word-break: break-all;
+  }
+  .jd-inferred-hint {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin: -8px 0 16px;
+  }
+
+  .reviews-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 900px) {
+    .reviews-grid { grid-template-columns: 1fr; }
+    .resume-row { grid-template-columns: 1fr; }
+  }
+  .review-card {
+    border: 1px solid #eee;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .review-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 24px 12px;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+  }
+  /* 维度区分：标题左侧小圆点 + 标题着色，不用色条 */
+  .review-header::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+  }
+  .review-card.tech .review-header { color: var(--tech-color); }
+  .review-card.tech .review-header::before { background: var(--tech-color); }
+  .review-card.experience .review-header { color: var(--exp-color); }
+  .review-card.experience .review-header::before { background: var(--exp-color); }
+  .review-card.improvement .review-header { color: var(--imp-color); }
+  .review-card.improvement .review-header::before { background: var(--imp-color); }
+  .review-body {
+    padding: 16px 24px 24px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 14.5px;
+    line-height: 1.7;
+    min-height: 120px;
+  }
+  .review-empty {
+    color: var(--muted);
+    font-style: italic;
+    text-align: center;
+    padding-top: 40px;
+  }
+
+  .votes-section { margin-bottom: 24px; }
+  .votes-section h2 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .vote-card {
+    border: 1px solid #eee;
+    border-left: 2px solid #d1d5db;
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    margin-bottom: 8px;
+  }
+  .vote-header {
+    font-size: 13.5px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .vote-voter { color: var(--primary); }
+  .vote-arrow { color: var(--muted); margin: 0 6px; font-weight: 400; }
+  .vote-target { color: var(--exp-color); }
+  .vote-round {
+    font-size: 12px;
+    color: var(--muted);
+    margin-left: 8px;
+    font-weight: 400;
+  }
+  .vote-reason {
+    font-size: 13px;
+    color: var(--muted);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    line-height: 1.6;
+  }
+  .votes-empty {
+    color: var(--muted);
+    font-style: italic;
+    font-size: 13px;
+    padding: 8px 0;
+  }
+
+  .note-box {
+    background: #f8f9fa;
+    border-left: 2px solid #d1d5db;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>多 Agent 简历评审系统</h1>
+
+  <!-- 输入区 -->
+  <div class="card">
+    <div class="resume-row">
+      <div>
+        <label class="field-label" for="resume">简历内容</label>
+        <textarea id="resume" placeholder="粘贴简历全文（技能、项目经历、教育背景等），或在右侧上传简历文件"></textarea>
+      </div>
+      <div class="upload-col">
+        <label class="field-label">简历文件</label>
+        <input type="file" id="resume-file" accept=".pdf,.docx,.txt,.md" style="display:none;">
+        <button type="button" class="upload-btn" id="upload-btn" onclick="document.getElementById('resume-file').click()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          上传文件
+        </button>
+        <div class="file-chip" id="file-chip" style="display:none;">
+          <span class="file-chip-name" id="file-chip-name"></span>
+          <button type="button" class="file-chip-remove" onclick="removeFile()" title="移除文件">✕</button>
+        </div>
+        <div class="upload-hint">支持 PDF / Word / TXT / MD，不超过 10MB</div>
+      </div>
+    </div>
+
+    <div class="jd-row">
+      <label class="field-label" for="jd">求职意向（选填，留空则由 AI 从简历中推断）</label>
+      <textarea id="jd" placeholder="如：Python 后端开发工程师，3 年经验，熟悉 Django / MySQL / Redis...（可留空）"></textarea>
+    </div>
+
+    <div class="btn-row">
+      <button id="submit-btn" onclick="submitReview()">开始评审</button>
+    </div>
+
+    <div id="loading">
+      <span class="spinner"></span>
+      <span id="loading-text">任务已提交，等待轮询...</span>
+    </div>
+
+    <div id="error"></div>
+  </div>
+
+  <!-- 结果区 -->
+  <div class="card" id="results" style="display:none;">
+    <div class="result-top">
+      <div class="winner-tag">Winner<span class="winner-name" id="winner-name"></span></div>
+      <div class="meta-row" id="meta-row"></div>
+    </div>
+
+    <div class="jd-inferred-hint" id="jd-inferred-hint" style="display:none;">求职意向由 AI 从简历中推断，如有偏差请在 JD 框补充</div>
+
+    <div class="reviews-grid" id="reviews-grid"></div>
+
+    <div class="votes-section">
+      <h2>投票记录</h2>
+      <div id="votes-list"></div>
+    </div>
+
+    <div class="note-box" id="note-box">
+      <strong>提示：</strong><span id="note-text"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+var DIMENSION_MAP = {
+  'tech_reviewer':       { name: '技术',     cls: 'tech' },
+  'experience_reviewer': { name: '经历',     cls: 'experience' },
+  'improvement_reviewer':{ name: '改进建议', cls: 'improvement' }
+};
+var EXPECTED_AGENTS = ['tech_reviewer', 'experience_reviewer', 'improvement_reviewer'];
+var ALLOWED_EXTS = ['.pdf', '.docx', '.txt', '.md'];
+var MAX_FILE_MB = 10;
+
+// 当前选中的简历文件（null 表示走文本粘贴模式）
+var selectedFile = null;
+
+document.getElementById('resume-file').addEventListener('change', function(ev) {
+  var file = ev.target.files[0];
+  if (!file) return;
+
+  var name = file.name.toLowerCase();
+  var extOk = ALLOWED_EXTS.some(function(e) { return name.endsWith(e); });
+  if (!extOk) {
+    showError('不支持的文件类型，仅支持 ' + ALLOWED_EXTS.join(' / '));
+    ev.target.value = '';
+    return;
+  }
+  if (file.size > MAX_FILE_MB * 1024 * 1024) {
+    showError('文件超过 ' + MAX_FILE_MB + 'MB 上限');
+    ev.target.value = '';
+    return;
+  }
+
+  selectedFile = file;
+  document.getElementById('file-chip-name').textContent =
+    file.name + '（' + (file.size / 1024).toFixed(1) + ' KB）';
+  document.getElementById('file-chip').style.display = 'flex';
+  document.getElementById('resume').style.display = 'none';
+  hideError();
+});
+
+function removeFile() {
+  selectedFile = null;
+  var input = document.getElementById('resume-file');
+  input.value = '';
+  document.getElementById('file-chip').style.display = 'none';
+  document.getElementById('resume').style.display = '';
+}
+
+function submitReview() {
+  var resume = document.getElementById('resume').value.trim();
+  var jd = document.getElementById('jd').value.trim();
+
+  if (!selectedFile && (!resume || resume.length < 10)) {
+    showError('请粘贴简历内容（至少 10 个字），或上传简历文件');
+    return;
+  }
+  // jd 选填：留空时后端走模型推断分支，此处不再校验
+
+  var btn = document.getElementById('submit-btn');
+  var uploadBtn = document.getElementById('upload-btn');
+  var loading = document.getElementById('loading');
+  var errorDiv = document.getElementById('error');
+  var resultsDiv = document.getElementById('results');
+
+  btn.disabled = true;
+  uploadBtn.disabled = true;
+  loading.classList.add('active');
+  errorDiv.classList.remove('active');
+  resultsDiv.style.display = 'none';
+  errorDiv.innerHTML = '';
+  document.getElementById('loading-text').textContent = '提交评审任务...';
+
+  // 有文件走 multipart 上传，否则走 JSON 文本；jd 仅在非空时才带上
+  var url, fetchOpts;
+  if (selectedFile) {
+    var form = new FormData();
+    form.append('file', selectedFile);
+    if (jd) form.append('jd', jd);
+    url = 'http://127.0.0.1:8765/review/upload';
+    fetchOpts = { method: 'POST', body: form }; // 不要手动设 Content-Type，浏览器自动带 boundary
+  } else {
+    var payload = { resume: resume };
+    if (jd) payload.jd = jd;
+    url = 'http://127.0.0.1:8765/review';
+    fetchOpts = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    };
+  }
+
+  fetch(url, fetchOpts)
+  .then(function(resp) {
+    if (!resp.ok) {
+      return resp.json().then(function(err) {
+        var detail = err.detail;
+        // FastAPI 422 校验错误 detail 可能是数组
+        if (Array.isArray(detail)) {
+          detail = detail.map(function(d) {
+            return (d.loc ? d.loc.join('.') + ': ' : '') + d.msg;
+          }).join('; ');
+        }
+        throw new Error(detail || ('HTTP ' + resp.status));
+      }).catch(function(e) {
+        // resp.json() 自身失败时（非 JSON 响应），e 是 SyntaxError，保留原始错误
+        if (e instanceof Error && e.message && e.message.indexOf('HTTP') !== -1) throw e;
+        throw new Error('HTTP ' + resp.status + ' ' + resp.statusText);
+      });
+    }
+    return resp.json();
+  })
+  .then(function(data) {
+    // POST 立即返回 {task_id, status: "pending"}，开始轮询
+    startPolling(data.task_id, Date.now());
+  })
+  .catch(function(err) {
+    loading.classList.remove('active');
+    btn.disabled = false;
+    uploadBtn.disabled = false;
+    showError('请求失败：' + err.message);
+  });
+}
+
+// ---------- 异步任务轮询 ----------
+
+var pollTimer = null;
+var pollFailCount = 0;
+var POLL_INTERVAL_MS = 5000;          // 每 5 秒查一次
+var POLL_TIMEOUT_MS = 30 * 60 * 1000; // 30 分钟自动停止
+
+function setUiBusy(busy) {
+  document.getElementById('submit-btn').disabled = busy;
+  document.getElementById('upload-btn').disabled = busy;
+  if (!busy) {
+    document.getElementById('loading').classList.remove('active');
+  }
+}
+
+function startPolling(taskId, startTime) {
+  stopPolling();
+  pollFailCount = 0;
+  document.getElementById('loading-text').textContent = '任务已提交（task_id: ' + taskId.slice(0, 8) + '...），排队中...';
+
+  pollTimer = setInterval(function() {
+    var elapsedSec = Math.floor((Date.now() - startTime) / 1000);
+
+    if (Date.now() - startTime > POLL_TIMEOUT_MS) {
+      stopPolling();
+      setUiBusy(false);
+      showError('任务超时（超过 30 分钟）。可稍后刷新页面用记录的 task_id 查询，或重新提交。');
+      return;
+    }
+
+    fetch('http://127.0.0.1:8765/review/' + taskId)
+    .then(function(resp) {
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      return resp.json();
+    })
+    .then(function(st) {
+      pollFailCount = 0;
+      if (st.status === 'done') {
+        stopPolling();
+        setUiBusy(false);
+        renderResults(st.result);
+      } else if (st.status === 'failed') {
+        stopPolling();
+        setUiBusy(false);
+        showError('评审失败：' + (st.error || '未知错误'));
+      } else {
+        // pending / running：更新等待提示
+        var phase = st.status === 'running' ? '三 Agent 评审中' : '排队中';
+        document.getElementById('loading-text').textContent =
+          phase + '，已等待 ' + (st.elapsed_seconds || elapsedSec) + ' 秒，预计 5-15 分钟...（页面可最小化，无需停留）';
+      }
+    })
+    .catch(function(err) {
+      // 网络抖动不立即放弃；连续 5 次失败才终止
+      pollFailCount++;
+      if (pollFailCount >= 5) {
+        stopPolling();
+        setUiBusy(false);
+        showError('轮询失败（连续 5 次）：' + err.message + '。任务可能仍在后台执行。');
+      }
+    });
+  }, POLL_INTERVAL_MS);
+}
+
+function stopPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
+
+function hideError() {
+  var div = document.getElementById('error');
+  div.classList.remove('active');
+  div.textContent = '';
+}
+
+function showError(msg) {
+  var div = document.getElementById('error');
+  div.textContent = msg;
+  div.classList.add('active');
+}
+
+function renderResults(data) {
+  var resultsDiv = document.getElementById('results');
+  resultsDiv.style.display = 'block';
+
+  // winner
+  document.getElementById('winner-name').textContent = data.winner || '（无）';
+
+  // jd_source=inferred 时提示求职意向为模型推断（旧数据无此字段则隐藏）
+  document.getElementById('jd-inferred-hint').style.display =
+    data.jd_source === 'inferred' ? 'block' : 'none';
+
+  // note
+  document.getElementById('note-text').textContent = data.note || '';
+
+  // reviews — 三列等宽，按固定顺序渲染
+  var grid = document.getElementById('reviews-grid');
+  grid.innerHTML = '';
+
+  EXPECTED_AGENTS.forEach(function(agentId) {
+    var review = (data.reviews || []).find(function(r) { return r.agent_id === agentId; });
+    var dim = DIMENSION_MAP[agentId] || { name: agentId, cls: 'tech' };
+    var content = review ? review.content : '';
+
+    var card = document.createElement('div');
+    card.className = 'review-card ' + dim.cls;
+
+    var header = document.createElement('div');
+    header.className = 'review-header';
+    header.textContent = dim.name + '评审 (' + agentId + ')';
+    card.appendChild(header);
+
+    var body = document.createElement('div');
+    body.className = 'review-body';
+    if (content && content.trim()) {
+      body.textContent = content;
+    } else {
+      body.className += ' review-empty';
+      body.textContent = '该维度未产出';
+    }
+    card.appendChild(body);
+
+    grid.appendChild(card);
+  });
+
+  // votes
+  var votesList = document.getElementById('votes-list');
+  votesList.innerHTML = '';
+
+  if (!data.votes || data.votes.length === 0) {
+    var empty = document.createElement('div');
+    empty.className = 'votes-empty';
+    empty.textContent = '本次未触发协调轮，无投票记录';
+    votesList.appendChild(empty);
+  } else {
+    data.votes.forEach(function(v) {
+      var card = document.createElement('div');
+      card.className = 'vote-card';
+
+      var header = document.createElement('div');
+      header.className = 'vote-header';
+      var round = v.coordination_round ? ' (协调轮 ' + v.coordination_round + ')' : '';
+      header.innerHTML =
+        '<span class="vote-voter">' + escapeHtml(v.voter) + '</span>' +
+        '<span class="vote-arrow">→</span>' +
+        '<span class="vote-target">' + escapeHtml(v.target) + '</span>' +
+        '<span class="vote-round">' + round + '</span>';
+      card.appendChild(header);
+
+      if (v.reason) {
+        var reason = document.createElement('div');
+        reason.className = 'vote-reason';
+        reason.textContent = v.reason;
+        card.appendChild(reason);
+      }
+      votesList.appendChild(card);
+    });
+  }
+
+  // meta
+  document.getElementById('meta-row').textContent =
+    'task_id: ' + (data.task_id || '') +
+    (data.source_filename ? '  |  来源文件: ' + data.source_filename : '') +
+    '  |  exit_code: ' + (data.exit_code !== undefined ? data.exit_code : 'N/A') +
+    '  |  log_dir: ' + (data.log_dir || '');
+}
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+</script>
+
+</body>
+</html>

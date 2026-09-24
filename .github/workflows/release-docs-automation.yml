@@ -1,0 +1,123 @@
+name: Release Documentation Validation
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Triggers on version tags like v0.1.33
+
+permissions:
+  contents: read
+
+jobs:
+  validate-release-docs:
+    name: Validate Release Documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+          echo "📦 Processing release: $TAG"
+
+      - name: Validate announcement files exist
+        id: validate
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          WARNINGS=""
+          ERRORS=""
+
+          echo "🔍 Checking release documentation..."
+
+          # Check feature highlights exists
+          if [ ! -f "docs/announcements/feature-highlights.md" ]; then
+            ERRORS="$ERRORS\n❌ Missing: docs/announcements/feature-highlights.md"
+          else
+            echo "✅ Found: feature-highlights.md"
+          fi
+
+          # Check current release announcement exists
+          if [ ! -f "docs/announcements/current-release.md" ]; then
+            WARNINGS="$WARNINGS\n⚠️  Missing: docs/announcements/current-release.md (run /release-prep)"
+          else
+            echo "✅ Found: current-release.md"
+
+            # Check if current-release.md mentions this version
+            if grep -q "$TAG" docs/announcements/current-release.md; then
+              echo "✅ current-release.md references $TAG"
+            else
+              WARNINGS="$WARNINGS\n⚠️  current-release.md does not reference $TAG - may need update"
+            fi
+          fi
+
+          # Check CHANGELOG has entry for this version
+          if grep -q "\[${TAG#v}\]" CHANGELOG.md || grep -q "## ${TAG#v}" CHANGELOG.md; then
+            echo "✅ CHANGELOG.md has entry for ${TAG#v}"
+          else
+            WARNINGS="$WARNINGS\n⚠️  CHANGELOG.md may not have entry for ${TAG#v}"
+          fi
+
+          # Check character count for LinkedIn
+          if [ -f "docs/announcements/current-release.md" ] && [ -f "docs/announcements/feature-highlights.md" ]; then
+            CHAR_COUNT=$(cat docs/announcements/current-release.md docs/announcements/feature-highlights.md | wc -m)
+            if [ "$CHAR_COUNT" -gt 3000 ]; then
+              WARNINGS="$WARNINGS\n⚠️  Combined announcement is $CHAR_COUNT chars (LinkedIn limit: ~3000)"
+            else
+              echo "✅ Character count: $CHAR_COUNT/3000"
+            fi
+          fi
+
+          # Report results
+          if [ -n "$ERRORS" ]; then
+            echo -e "$ERRORS"
+            echo "has_errors=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_errors=false" >> $GITHUB_OUTPUT
+          fi
+
+          if [ -n "$WARNINGS" ]; then
+            echo -e "$WARNINGS"
+            echo "has_warnings=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_warnings=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          echo "## 📋 Release Documentation Validation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Release:** $TAG" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.validate.outputs.has_errors }}" = "true" ]; then
+            echo "### ❌ Validation Failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Required files are missing. Run \`/release-prep $TAG\` to generate them." >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ steps.validate.outputs.has_warnings }}" = "true" ]; then
+            echo "### ⚠️ Validation Passed with Warnings" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "See job logs for details." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ✅ Validation Passed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "All release documentation is in place." >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Files Checked" >> $GITHUB_STEP_SUMMARY
+          echo "- \`docs/announcements/feature-highlights.md\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`docs/announcements/current-release.md\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`CHANGELOG.md\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail on errors
+        if: steps.validate.outputs.has_errors == 'true'
+        run: |
+          echo "Release documentation validation failed. See logs above."
+          exit 1

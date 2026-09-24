@@ -1,0 +1,55 @@
+{
+  "01_tech_r1_content_fence.txt": {
+    "note": "正文在前，'内容（约150字…）：'围栏开头，尾部工作区/决策要点",
+    "must_contain": ["技术匹配评分：2/5", "Python/Django"],
+    "must_not_contain": ["工作区：", "决策要点"]
+  },
+  "02_tech_r2_head_metadata.txt": {
+    "note": "回归用例：元信息在头部（工作区 L4），正文在 '评审正文（…）：' 围栏之后，旧清洗器 L4 即 break 导致 0 字",
+    "must_contain": ["技术匹配评分：2/5", "零深度证据", "QPS 提升 30%", "教育栏补学校"],
+    "must_not_contain": ["技术能力评审已完成", "评审正文（技术维度", "Task Status", "工作区："]
+  },
+  "03_exp_r1_clean.txt": {
+    "note": "本来就干净的答案，清洗不应误伤",
+    "must_contain": ["经历匹配评分：1/5", "经历完全缺失", "量化结果"],
+    "must_not_contain": []
+  },
+  "04_exp_r2_deliberation_vote.txt": {
+    "must_contain": ["经历匹配评分：1/5", "无量化指标", "补2-3段后端项目"],
+    "must_not_contain": ["我完成了", "评审正文", "评审说明", "Vote 评估", "无须推翻", "agent1.1"]
+  },
+  "05_imp_r1_clean.txt": {
+    "note": "干净答案，'评审（≤300字…）：'是正文引导行不是围栏标题",
+    "must_contain": ["项目经历", "QPS提升30%", "GitHub"],
+    "must_not_contain": []
+  },
+  "06_imp_r2_english_deliberation.txt": {
+    "must_contain": ["技能Python/Django", "GitHub", "下一步"],
+    "must_not_contain": ["extended agent2.1", "framing", "agent2.1"]
+  },
+  "07_final_tech_polished.txt": {
+    "note": "final/ 展示稿：结构化正文 + 尾注（字数自检 + 依据行引用 changedoc/agent 编号）",
+    "must_contain": ["## 技术维度评审", "零深度证据", "QPS 提升 30%"],
+    "must_not_contain": ["字数：276", "changedoc.md", "agent3.1"]
+  },
+  "08_old_imp_changedoc.txt": {
+    "note": "正文 + 字数自检行 + 产出文件 + 完整 Change Document/DEC/Deliberation 区块",
+    "must_contain": ["简历改进建议", "Exactly-Once", "背压"],
+    "must_not_contain": ["Change Document", "DEC-001", "Deliberation", "产出文件", "全文 297 字"]
+  },
+  "09_old_exp_diff_section.txt": {
+    "note": "正文 + '与既有答案的差异' 区块 + workspace 路径 + 验证说明",
+    "must_contain": ["经历匹配评分：4/5", "QPS 200→800", "日1亿条"],
+    "must_not_contain": ["与既有答案的差异", "agent2.2", "workspace_7ac49409", "正文约 284 字"]
+  },
+  "10_fast_final_tech_dec_table.txt": {
+    "note": "final/ 展示稿尾部带 '### 决策记录（Consolidated Change Document）' 表格，旧规则只认 '决策日志' 漏网",
+    "must_contain": ["技术匹配评分：4/5", "Saga/TCC", "指标口径不明"],
+    "must_not_contain": ["决策记录", "Consolidated", "DEC-001", "Deliberation", "changedoc.md"]
+  },
+  "11_old_final_tech_delivery_section.txt": {
+    "note": "final/ 展示稿尾部 '**交付与验证说明**' 区块（约束核对 PASS/采纳依据引用 agent 编号）",
+    "must_contain": ["## 技术维度评审", "技术匹配评分：4/5", "结论"],
+    "must_not_contain": ["交付与验证说明", "约束核对", "PASS", "采纳依据", "agent3.1", "deliverable/", "changedoc.md"]
+  }
+}
