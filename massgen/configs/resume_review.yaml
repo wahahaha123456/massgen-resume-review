@@ -5,7 +5,6 @@ agents:
       model: "deepseek-chat"
       base_url: "https://api.deepseek.com/v1"
       api_key: "${DEEPSEEK_API_KEY}"
-      cwd: "workspace"
     system_message: |
       你是一位资深技术面试官，只负责简历的【技术维度】评审。
       评审内容仅限：技术栈与目标岗位的匹配度、技术深度证据、技能描述的可信度与含金量。
@@ -27,10 +26,9 @@ agents:
   - id: "experience_reviewer"
     backend:
       type: "chatcompletion"
-      model: "deepseek-reasoner"
+      model: "deepseek-chat"
       base_url: "https://api.deepseek.com/v1"
       api_key: "${DEEPSEEK_API_KEY}"
-      cwd: "workspace"
     system_message: |
       你是一位严谨的招聘评审专家，只负责简历的【经历维度】评审。
       评审内容仅限：项目/实习经历与目标岗位的相关性、职责清晰度、成果量化程度、经历的真实性与说服力。
@@ -55,7 +53,6 @@ agents:
       model: "deepseek-chat"
       base_url: "https://api.deepseek.com/v1"
       api_key: "${DEEPSEEK_API_KEY}"
-      cwd: "workspace"
     system_message: |
       你是一位职业教练，只负责针对这份简历给出【可执行的改进建议】。
       评审内容仅限：候选人应如何改写/补充简历，以更好匹配目标岗位。
@@ -81,11 +78,18 @@ ui:
 orchestrator:
   snapshot_storage: snapshots
   agent_temporary_workspace: temp_workspaces
-  max_new_answers_per_agent: 2
+  # 多 agent 快速模式（refinement-OFF）。注意：这些运行时键必须放在
+  # orchestrator 顶层才会装配到 AgentConfig；放 coordination: 下会被当未知键忽略。
+  max_new_answers_per_agent: 1          # 每个 agent 只答一次（口径含首答），不做迭代改写
+  voting_sensitivity: "lenient"
+  answer_novelty_requirement: "lenient"
+  skip_final_presentation: true         # 不再让 winner 多跑一次展示 LLM 调用，直接用其原答案
+  disable_injection: true               # 首轮三个 agent 独立并行作答，互不注入
+  defer_voting_until_all_answered: true # 先交卷的 agent 零成本等待全员，不提前重启
+  skip_voting: true                    # 全员交卷即结束：不进投票轮（实测投票轮模型调不对
+                                       # vote 工具会重试并重写答案，白耗 ~43s）；无投票时
+                                       # winner 兜底为首个有答案的 agent，三份原答案照常产出
   coordination:
-    voting_sensitivity: "lenient"
-    max_new_answers_per_agent: 1
-    answer_novelty_requirement: "lenient"
     max_orchestration_restarts: 0
 
 timeout_settings:

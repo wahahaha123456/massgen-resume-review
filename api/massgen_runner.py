@@ -13,6 +13,8 @@ import asyncio
 import json
 import os
 import re
+import subprocess
+import sys
 import uuid
 from pathlib import Path
 
@@ -134,6 +136,104 @@ def _normalize_line(line: str) -> str:
     return s
 
 _SUBPROCESS_TIMEOUT_SECONDS = 2400  # 40 分钟安全上限（orchestrator 自身超时 1800s）
+
+
+def _run_command_sync(cmd: list[str], cwd: str, timeout: float) -> tuple[str, int]:
+    """在工作线程中同步执行子进程，返回 (stdout 文本, 退出码)。
+
+    必须用同步 subprocess 而非 asyncio.create_subprocess_exec：uvicorn 0.36+
+    在 Windows 上以 --reload / 多 workers 启动时强制使用 SelectorEventLoop
+    （Config.use_subprocess=True），而 Windows 的 SelectorEventLoop 不支持
+    子进程传输，asyncio 子进程 API 会抛裸 NotImplementedError 导致任务秒失败。
+    同步 subprocess 直接走 CreateProcess，与事件循环类型无关。
+    """
+    # 中文 Windows 子进程默认 cp936，massgen print emoji（🟡/❌）会
+    # UnicodeEncodeError 崩在配置校验阶段。显式锁定 UTF-8，不依赖宿主终端代码页。
+    env = {
+        **os.environ,
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONUTF8": "1",
+    }
+    try:
+        proc = subprocess.run(
+            cmd,
+            cwd=cwd,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("massgen 评审执行超时（>40 分钟），已终止子进程") from exc
+    return proc.stdout.decode("utf-8", errors="replace"), proc.returncode
+
+
+async def _exec_command(cmd: list[str], cwd: str, timeout: float) -> tuple[str, int]:
+    """异步包装：把同步子进程执行丢到线程池，不阻塞事件循环。"""
+    return await asyncio.to_thread(_run_command_sync, cmd, cwd, timeout)
+
+
+def _massgen_launch_prefix() -> list[str]:
+    """子进程入口前缀。
+
+    优先直调当前解释器同目录的 massgen console script（venv/Scripts/massgen.exe
+    或 venv/bin/massgen），绕过 `uv run` 每次的环境解析（实测热缓存省 ~15s/次）。
+    console script 不存在时（非 venv 安装等）回退 `uv run massgen`，保证可用。
+    """
+    entry_name = "massgen.exe" if os.name == "nt" else "massgen"
+    console_script = Path(sys.executable).resolve().parent / entry_name
+    if console_script.exists():
+        return [str(console_script)]
+    return [_uv_executable(), "run", "massgen"]
+
+
+def _build_command(prompt: str) -> list[str]:
+    """构造 massgen 子进程命令（list 形式，不经 shell，参数不会被拆词）。"""
+    return [
+        *_massgen_launch_prefix(),
+        "--automation",
+        # 简历正文是纯数据，不是工作指令：关闭 @文件引用解析。
+        # 否则简历里的 mAP@0.5、内部邮箱等 token 会被当路径，
+        # 报 "Context paths not found" 并在编排开始前退出。
+        "--no-parse-at-references",
+        "--config",
+        str(CONFIG_PATH.relative_to(PROJECT_ROOT)),
+        prompt,
+    ]
+
+
+def _failure_reason_from_metadata(metadata_text: str) -> str:
+    """从 execution_metadata.yaml 提取 massgen 记录的失败阶段与原因。
+
+    子进程 configuration_error 时没有 Python traceback（只有 print 的错误行），
+    但失败信息会落进 cli_args.failure_stage / failure_error。解析失败返回空串。
+    """
+    if not metadata_text.strip():
+        return ""
+    try:
+        import yaml  # 延迟导入：massgen 本身依赖 PyYAML，环境里必然有
+
+        data = yaml.safe_load(metadata_text) or {}
+        cli_args = data.get("cli_args") or {}
+        stage = cli_args.get("failure_stage")
+        error = cli_args.get("failure_error")
+    except Exception:
+        return ""
+    if not stage and not error:
+        return ""
+    return f"{stage or 'unknown_stage'}: {error}".strip().rstrip(":")
+
+
+def _read_failure_reason(run_dir: Path) -> str:
+    metadata = run_dir / "turn_1" / "attempt_1" / "execution_metadata.yaml"
+    if not metadata.exists():
+        return ""
+    try:
+        return _failure_reason_from_metadata(
+            metadata.read_text(encoding="utf-8", errors="replace")
+        )
+    except OSError:
+        return ""
 
 
 def _uv_executable() -> str:
@@ -298,38 +398,19 @@ def _parse_results(run_dir: Path, stdout_text: str) -> dict:
 async def run_resume_review(task_id: str, resume: str, jd: str | None) -> dict:
     """执行一次完整的三智能体简历评审，返回聚合结果 dict。"""
     prompt = build_prompt(resume=resume, jd=jd)
+    cmd = _build_command(prompt)
 
-    cmd = [
-        _uv_executable(),
-        "run",
-        "massgen",
-        "--automation",
-        "--config",
-        str(CONFIG_PATH.relative_to(PROJECT_ROOT)),
-        prompt,
-    ]
-
-    proc = await asyncio.create_subprocess_exec(
-        *cmd,
-        cwd=str(PROJECT_ROOT),
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.STDOUT,
+    # 注意：不能用 asyncio.create_subprocess_exec —— uvicorn --reload 在
+    # Windows 上是 SelectorEventLoop，不支持 asyncio 子进程（NotImplementedError）。
+    # _exec_command 内部走线程池 + 同步 subprocess，等待期间事件循环照常服务。
+    stdout_text, returncode = await _exec_command(
+        cmd, cwd=str(PROJECT_ROOT), timeout=_SUBPROCESS_TIMEOUT_SECONDS
     )
-
-    try:
-        stdout_bytes, _ = await asyncio.wait_for(
-            proc.communicate(), timeout=_SUBPROCESS_TIMEOUT_SECONDS
-        )
-    except asyncio.TimeoutError:
-        proc.kill()
-        raise RuntimeError("massgen 评审执行超时（>40 分钟），已终止子进程")
-
-    stdout_text = stdout_bytes.decode("utf-8", errors="replace")
 
     log_match = re.search(r"^LOG_DIR:\s*(.+)$", stdout_text, flags=re.MULTILINE)
     if not log_match:
         tail = "\n".join(stdout_text.splitlines()[-30:])
-        raise RuntimeError(f"未能从 massgen 输出中定位 LOG_DIR，子进程退出码 {proc.returncode}。\n输出末尾：\n{tail}")
+        raise RuntimeError(f"未能从 massgen 输出中定位 LOG_DIR，子进程退出码 {returncode}。\n输出末尾：\n{tail}")
 
     log_dir_raw = log_match.group(1).strip()
     run_dir = Path(log_dir_raw)
@@ -337,6 +418,18 @@ async def run_resume_review(task_id: str, resume: str, jd: str | None) -> dict:
         run_dir = PROJECT_ROOT / run_dir
 
     parsed = _parse_results(run_dir, stdout_text)
+
+    # 不能静默返回空结果：子进程非零退出或三个维度全空时（如 configuration_error
+    # 崩在编排前），必须带着 massgen 记录的失败原因抛出，否则前端只会显示
+    # "Winner（无）/ 该维度未产出"，看起来像成功却什么都没有。
+    produced = [r["agent_id"] for r in parsed["reviews"] if r["content"].strip()]
+    if returncode != 0 or not produced:
+        reason = _read_failure_reason(run_dir)
+        tail = "\n".join(stdout_text.splitlines()[-15:])
+        detail = reason or f"输出末尾：\n{tail}"
+        raise RuntimeError(
+            f"评审未产出（子进程退出码 {returncode}，产出维度：{produced or '无'}）。{detail}"
+        )
 
     return {
         "task_id": task_id,
@@ -346,7 +439,7 @@ async def run_resume_review(task_id: str, resume: str, jd: str | None) -> dict:
         "winner": parsed["winner"],
         "note": NOTE,
         "log_dir": str(run_dir).replace("\\", "/"),
-        "exit_code": proc.returncode,
+        "exit_code": returncode,
     }
 
 
